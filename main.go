@@ -9,13 +9,13 @@ import (
 
 func main() {
 	s := sweep.Sweep[int, int]{
-		Generator: func(c chan int, manager sweep.SweepManager) {
+		Generator: func(c chan int, manager sweep.Manager) {
 			for i := 0; i < 100; i++ {
 				c <- i
 			}
 			close(c)
 		},
-		Worker: func(c int, manager sweep.SweepManager) int {
+		Worker: func(c int, manager sweep.Manager) int {
 			if c > 3 {
 				manager.Cancel()
 			}
