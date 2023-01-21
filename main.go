@@ -2,29 +2,27 @@ package main
 
 import (
 	"fmt"
-	"os/exec"
-	"strconv"
 	"time"
 
 	"dash/sweep"
 )
 
 func main() {
-	s := sweep.Sweep[int, string]{
-		Generator: func(c chan int) {
-			for i := 0; i < 20; i++ {
+	s := sweep.Sweep[int, int]{
+		Generator: func(c chan int, manager sweep.SweepManager) {
+			for i := 0; i < 100; i++ {
 				c <- i
 			}
 			close(c)
 		},
-		Worker: func(c int) string {
-			time.Sleep(2 * time.Second)
-			cmd := exec.Command("echo", strconv.Itoa(c))
-			output, _ := cmd.Output()
-			fmt.Println("Done!")
-			return string(output)
+		Worker: func(c int, manager sweep.SweepManager) int {
+			if c > 3 {
+				manager.Cancel()
+			}
+			time.Sleep(100 * time.Millisecond)
+			return c
 		},
-		MaxWorkers: 5,
+		MaxWorkers: 1,
 	}
 
 	fmt.Println(s.Run())
