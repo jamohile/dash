@@ -2,7 +2,6 @@ package sweep
 
 import (
 	"context"
-	"fmt"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -32,8 +31,6 @@ func (s Sweep[C, R]) dispatcher(configs chan C, results chan R, manager Manager)
 		sem.Acquire(context.Background(), 1)
 
 		go func(config C) {
-			fmt.Println("dispatch")
-			fmt.Println(config)
 			s.Worker(config, results, manager.Child())
 			sem.Release(1)
 		}(config)
