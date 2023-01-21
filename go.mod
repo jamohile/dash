@@ -1,4 +1,4 @@
-module dash
+module github.com/jamohile/dash
 
 go 1.19
 
