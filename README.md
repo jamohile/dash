@@ -1,4 +1,4 @@
-# Dash
+# Dash (WIP)
 
 A simple experiment manager for collecting data across parallel workloads.
 
