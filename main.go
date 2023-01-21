@@ -15,12 +15,15 @@ func main() {
 			}
 			close(c)
 		},
-		Worker: func(c int, manager sweep.Manager) int {
-			if c > 3 {
+		Worker: func(c int, r chan int, manager sweep.Manager) {
+			if c >= 3 {
+				fmt.Println("cancel")
 				manager.Cancel()
 			}
 			time.Sleep(100 * time.Millisecond)
-			return c
+			if !manager.IsDone() {
+				r <- c
+			}
 		},
 		MaxWorkers: 1,
 	}

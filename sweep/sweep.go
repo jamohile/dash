@@ -2,13 +2,14 @@ package sweep
 
 import (
 	"context"
+	"fmt"
 
 	"golang.org/x/sync/semaphore"
 )
 
 type Sweep[C any, R any] struct {
 	Generator  func(config chan C, manager Manager)
-	Worker     func(config C, manager Manager) R
+	Worker     func(config C, results chan R, manager Manager)
 	MaxWorkers int
 }
 
@@ -31,7 +32,9 @@ func (s Sweep[C, R]) dispatcher(configs chan C, results chan R, manager Manager)
 		sem.Acquire(context.Background(), 1)
 
 		go func(config C) {
-			results <- s.Worker(config, manager.Child())
+			fmt.Println("dispatch")
+			fmt.Println(config)
+			s.Worker(config, results, manager.Child())
 			sem.Release(1)
 		}(config)
 	}
