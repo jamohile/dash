@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
-	"strings"
+	"os/exec"
+	"strconv"
+	"time"
 
 	"dash/sweep"
 )
@@ -16,7 +18,11 @@ func main() {
 			close(c)
 		},
 		Worker: func(c int) string {
-			return strings.Repeat("yo", c)
+			time.Sleep(2 * time.Second)
+			cmd := exec.Command("echo", strconv.Itoa(c))
+			output, _ := cmd.Output()
+			fmt.Println("Done!")
+			return string(output)
 		},
 		MaxWorkers: 5,
 	}

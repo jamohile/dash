@@ -1,6 +1,10 @@
 package sweep
 
-import "sync"
+import (
+	"context"
+
+	"golang.org/x/sync/semaphore"
+)
 
 type Sweep[C any, R any] struct {
 	Generator  func(chan C)
@@ -10,19 +14,19 @@ type Sweep[C any, R any] struct {
 
 /** Dispatches configurations to ready workers. **/
 func (s Sweep[C, R]) dispatcher(configs chan C, results chan R) {
-	wg := sync.WaitGroup{}
+	sem := semaphore.NewWeighted(int64(s.MaxWorkers))
 
 	for config := range configs {
-		// Kick off a new worker.
-		wg.Add(1)
+		sem.Acquire(context.TODO(), 1)
+
 		go func(config C) {
 			results <- s.Worker(config)
-			wg.Done()
+			sem.Release(1)
 		}(config)
 	}
 
 	// When all workers are complete, close the results channel.
-	wg.Wait()
+	sem.Acquire(context.TODO(), int64(s.MaxWorkers))
 	close(results)
 }
 
@@ -37,7 +41,7 @@ func (s Sweep[C, R]) collector(results chan R) []R {
 
 /** Complete all generated work units in parallel. **/
 func (s Sweep[C, R]) Run() []R {
-	configs := make(chan C, s.MaxWorkers)
+	configs := make(chan C, 100)
 	results := make(chan R, 100)
 
 	go s.Generator(configs)
