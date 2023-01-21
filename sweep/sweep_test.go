@@ -10,7 +10,6 @@ func TestRunsFullSweep(t *testing.T) {
 			for i := 0; i < 100; i++ {
 				c <- i
 			}
-			close(c)
 		},
 		Worker: func(c int, r chan int, manager Manager) {
 			r <- c
@@ -49,7 +48,6 @@ func TestExitsSweepEarly(t *testing.T) {
 				}
 				c <- i
 			}
-			close(c)
 		},
 		Worker: func(c int, r chan int, manager Manager) {
 			if c >= 10 {

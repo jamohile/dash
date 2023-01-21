@@ -12,8 +12,14 @@ type Sweep[C any, R any] struct {
 	MaxWorkers int
 }
 
+/** Generates configurations for workers. **/
+func (s Sweep[C, R]) generate(configs chan C, manager Manager) {
+	s.Generator(configs, manager)
+	close(configs)
+}
+
 /** Dispatches configurations to ready workers. **/
-func (s Sweep[C, R]) dispatcher(configs chan C, results chan R, manager Manager) {
+func (s Sweep[C, R]) dispatch(configs chan C, results chan R, manager Manager) {
 	sem := semaphore.NewWeighted(int64(s.MaxWorkers))
 
 	// When all workers are complete, close the results channel.
@@ -38,7 +44,7 @@ func (s Sweep[C, R]) dispatcher(configs chan C, results chan R, manager Manager)
 }
 
 /** Collects and buffers results from workers **/
-func (s Sweep[C, R]) collector(results chan R) []R {
+func (s Sweep[C, R]) collect(results chan R) []R {
 	var results_buffer []R
 	for r := range results {
 		results_buffer = append(results_buffer, r)
@@ -52,7 +58,7 @@ func (s Sweep[C, R]) Run() []R {
 	results := make(chan R, 1000)
 	manager := CreateManager()
 
-	go s.Generator(configs, manager)
-	go s.dispatcher(configs, results, manager)
-	return s.collector(results)
+	go s.generate(configs, manager)
+	go s.dispatch(configs, results, manager)
+	return s.collect(results)
 }
