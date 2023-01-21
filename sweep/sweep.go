@@ -7,27 +7,34 @@ import (
 )
 
 type Sweep[C any, R any] struct {
-	Generator  func(chan C)
-	Worker     func(config C) R
+	Generator  func(config chan C, manager Manager)
+	Worker     func(config C, manager Manager) R
 	MaxWorkers int
 }
 
 /** Dispatches configurations to ready workers. **/
-func (s Sweep[C, R]) dispatcher(configs chan C, results chan R) {
+func (s Sweep[C, R]) dispatcher(configs chan C, results chan R, manager Manager) {
 	sem := semaphore.NewWeighted(int64(s.MaxWorkers))
 
+	// When all workers are complete, close the results channel.
+	defer func() {
+		sem.Acquire(context.TODO(), int64(s.MaxWorkers))
+		close(results)
+	}()
+
+	// As long as there are configurations for workers, keep spinning up workers.
 	for config := range configs {
-		sem.Acquire(context.TODO(), 1)
+		if manager.IsDone() {
+			return
+		}
+
+		sem.Acquire(context.Background(), 1)
 
 		go func(config C) {
-			results <- s.Worker(config)
+			results <- s.Worker(config, manager.Child())
 			sem.Release(1)
 		}(config)
 	}
-
-	// When all workers are complete, close the results channel.
-	sem.Acquire(context.TODO(), int64(s.MaxWorkers))
-	close(results)
 }
 
 /** Collects and buffers results from workers **/
@@ -41,10 +48,11 @@ func (s Sweep[C, R]) collector(results chan R) []R {
 
 /** Complete all generated work units in parallel. **/
 func (s Sweep[C, R]) Run() []R {
-	configs := make(chan C, 100)
-	results := make(chan R, 100)
+	configs := make(chan C, s.MaxWorkers)
+	results := make(chan R, 1000)
+	manager := CreateManager()
 
-	go s.Generator(configs)
-	go s.dispatcher(configs, results)
+	go s.Generator(configs, manager)
+	go s.dispatcher(configs, results, manager)
 	return s.collector(results)
 }
