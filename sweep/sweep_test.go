@@ -11,7 +11,7 @@ func TestRunsFullSweep(t *testing.T) {
 				c <- i
 			}
 		},
-		Worker: func(c int, r chan int, manager Manager) {
+		Worker: func(c int, r chan int, e chan Event, manager Manager) {
 			r <- c
 		},
 		MaxWorkers: 10,
@@ -49,7 +49,7 @@ func TestExitsSweepEarly(t *testing.T) {
 				c <- i
 			}
 		},
-		Worker: func(c int, r chan int, manager Manager) {
+		Worker: func(c int, r chan int, e chan Event, manager Manager) {
 			if c >= 10 {
 				manager.Cancel()
 				return
@@ -68,6 +68,42 @@ func TestExitsSweepEarly(t *testing.T) {
 	}
 }
 
+func TestFiresEvents(t *testing.T) {
+	event_map := map[int]bool{}
+
+	s := Sweep[int, int]{
+		Generator: func(c chan int, manager Manager) {
+			for i := 0; i < 100; i++ {
+				c <- i
+			}
+		},
+		Worker: func(c int, r chan int, e chan Event, manager Manager) {
+			r <- c
+			e <- Event{
+				Key:  "data",
+				Data: c,
+			}
+		},
+		OnEvent: func(e WorkerEvent[int]) {
+			event_map[e.Event.Data.(int)] = true
+			if e.Description.Config != e.Event.Data.(int) {
+				t.Fatalf("Invalid data. Got %d, expected %d", e.Description.Config, e.Event.Data.(int))
+			}
+		},
+		MaxWorkers: 10,
+	}
+	s.Run()
+
+	// Check that all 100 events have been called.
+	for i := 0; i < 100; i++ {
+		_, ok := event_map[i]
+		if !ok {
+			t.Fatalf("Event not fired: %d", i)
+			break
+		}
+	}
+}
+
 func TestNestedSweep(t *testing.T) {
 	s := Sweep[int, []int]{
 		Generator: func(c chan int, m Manager) {
@@ -75,14 +111,14 @@ func TestNestedSweep(t *testing.T) {
 				c <- i
 			}
 		},
-		Worker: func(c int, r chan []int, m Manager) {
+		Worker: func(c int, r chan []int, e chan Event, m Manager) {
 			s1 := Sweep[int, int]{
 				Generator: func(c1 chan int, m1 Manager) {
 					for i := 0; i < 100; i++ {
 						c1 <- i
 					}
 				},
-				Worker: func(c1 int, r1 chan int, m1 Manager) {
+				Worker: func(c1 int, r1 chan int, e chan Event, m1 Manager) {
 					r1 <- c1
 				},
 				MaxWorkers: 1,

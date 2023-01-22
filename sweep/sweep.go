@@ -8,7 +8,8 @@ import (
 
 type Sweep[C any, R any] struct {
 	Generator     func(config chan C, manager Manager)
-	Worker        func(config C, results chan R, manager Manager)
+	Worker        func(config C, results chan R, events chan Event, manager Manager)
+	OnEvent       func(event WorkerEvent[C])
 	GetWorkerName func(config C) string
 	MaxWorkers    int
 }
@@ -20,7 +21,7 @@ func (s Sweep[C, R]) generate(configs chan C, manager Manager) {
 }
 
 /** Dispatches configurations to ready workers. **/
-func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], manager Manager) {
+func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], events chan WorkerEvent[C], manager Manager) {
 	sem := semaphore.NewWeighted(int64(s.MaxWorkers))
 
 	// When all workers are complete, close the results channel.
@@ -49,8 +50,21 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], m
 
 		go func(config C) {
 			worker_results := make(chan R, 100)
-			s.Worker(config, worker_results, manager.Child())
+			worker_events := make(chan Event)
+
+			go func() {
+				for worker_event := range worker_events {
+					event := WorkerEvent[C]{
+						Description: description,
+						Event:       worker_event,
+					}
+					events <- event
+				}
+			}()
+
+			s.Worker(config, worker_results, worker_events, manager.Child())
 			close(worker_results)
+			close(worker_events)
 
 			for worker_result := range worker_results {
 				results <- WorkerResult[C, R]{
@@ -76,9 +90,17 @@ func (s Sweep[C, R]) collect(results chan WorkerResult[C, R]) []WorkerResult[C, 
 func (s Sweep[C, R]) Run() []WorkerResult[C, R] {
 	configs := make(chan C, s.MaxWorkers)
 	results := make(chan WorkerResult[C, R], 1000)
+	events := make(chan WorkerEvent[C], 1000)
 	manager := CreateManager()
 
 	go s.generate(configs, manager)
-	go s.dispatch(configs, results, manager)
+	go s.dispatch(configs, results, events, manager)
+	go func() {
+		for e := range events {
+			if s.OnEvent != nil {
+				s.OnEvent(e)
+			}
+		}
+	}()
 	return s.collect(results)
 }
