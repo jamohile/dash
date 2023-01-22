@@ -2,6 +2,7 @@ package sweep
 
 import (
 	"context"
+	"time"
 
 	"golang.org/x/sync/semaphore"
 )
@@ -42,8 +43,9 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], e
 		sem.Acquire(context.Background(), 1)
 
 		description := WorkerDescription[C]{
-			ID:     workerId,
-			Config: config,
+			ID:        workerId,
+			Config:    config,
+			StartTime: time.Now(),
 		}
 		if s.GetWorkerName != nil {
 			description.Name = s.GetWorkerName(config)
@@ -61,6 +63,7 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], e
 					event := WorkerEvent[C]{
 						Description: description,
 						Event:       worker_event,
+						Time:        time.Now(),
 					}
 					events <- event
 				}
@@ -78,9 +81,12 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], e
 				results <- WorkerResult[C, R]{
 					Description: description,
 					Result:      worker_result,
+					Time:        time.Now(),
 				}
 			}
 			<-all_worker_events_processed
+
+			description.EndTime = time.Now()
 
 			sem.Release(1)
 		}(config)

@@ -1,14 +1,19 @@
 package sweep
 
+import "time"
+
 type WorkerDescription[C any] struct {
-	ID     int
-	Config C
-	Name   string
+	ID        int
+	Config    C
+	Name      string
+	StartTime time.Time
+	EndTime   time.Time
 }
 
 type WorkerResult[C any, R any] struct {
 	Description WorkerDescription[C]
 	Result      R
+	Time        time.Time
 }
 
 type Event struct {
@@ -19,6 +24,7 @@ type Event struct {
 type WorkerEvent[C any] struct {
 	Description WorkerDescription[C]
 	Event       Event
+	Time        time.Time
 }
 
 const (
