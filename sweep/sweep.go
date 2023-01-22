@@ -13,17 +13,6 @@ type Sweep[C any, R any] struct {
 	MaxWorkers    int
 }
 
-type WorkerDescription[C any] struct {
-	ID     int
-	Config C
-	Name   string
-}
-
-type WorkerResult[C any, R any] struct {
-	Description WorkerDescription[C]
-	Result      R
-}
-
 /** Generates configurations for workers. **/
 func (s Sweep[C, R]) generate(configs chan C, manager Manager) {
 	s.Generator(configs, manager)
