@@ -80,11 +80,14 @@ func TestFiresEvents(t *testing.T) {
 		Worker: func(c int, r chan int, e chan Event, manager Manager) {
 			r <- c
 			e <- Event{
-				Key:  "data",
+				Type: "data",
 				Data: c,
 			}
 		},
 		OnEvent: func(e WorkerEvent[int]) {
+			if e.Event.Type != "data" {
+				return
+			}
 			event_map[e.Event.Data.(int)] = true
 			if e.Description.Config != e.Event.Data.(int) {
 				t.Fatalf("Invalid data. Got %d, expected %d", e.Description.Config, e.Event.Data.(int))

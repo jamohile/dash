@@ -62,7 +62,10 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], e
 				}
 			}()
 
+			worker_events <- Event{Type: WORKER_STARTED}
 			s.Worker(config, worker_results, worker_events, manager.Child())
+			worker_events <- Event{Type: WORKER_COMPLETED}
+
 			close(worker_results)
 			close(worker_events)
 

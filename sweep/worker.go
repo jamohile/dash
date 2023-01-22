@@ -12,7 +12,7 @@ type WorkerResult[C any, R any] struct {
 }
 
 type Event struct {
-	Key  string
+	Type string
 	Data interface{}
 }
 
@@ -20,3 +20,8 @@ type WorkerEvent[C any] struct {
 	Description WorkerDescription[C]
 	Event       Event
 }
+
+const (
+	WORKER_STARTED   = "dash_started"
+	WORKER_COMPLETED = "dash_complete"
+)
