@@ -1,7 +1,6 @@
 package sweep
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -70,7 +69,6 @@ func TestExitsSweepEarly(t *testing.T) {
 }
 
 func TestNestedSweep(t *testing.T) {
-	fmt.Println("hey")
 	s := Sweep[int, []int]{
 		Generator: func(c chan int, m Manager) {
 			for i := 0; i < 100; i++ {
@@ -89,7 +87,11 @@ func TestNestedSweep(t *testing.T) {
 				},
 				MaxWorkers: 1,
 			}
-			r <- s1.Run()
+			results := []int{}
+			for _, result := range s1.Run() {
+				results = append(results, result.Result)
+			}
+			r <- results
 		},
 		MaxWorkers: 1,
 	}
@@ -102,8 +104,8 @@ func TestNestedSweep(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		subResult := results[i]
-		if len(subResult) != 100 {
-			t.Fatalf("Invalid sub results length: %d", len(subResult))
+		if len(subResult.Result) != 100 {
+			t.Fatalf("Invalid sub results length: %d", len(subResult.Result))
 		}
 	}
 }

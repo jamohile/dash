@@ -19,6 +19,11 @@ type WorkerDescription[C any] struct {
 	Name   string
 }
 
+type WorkerResult[C any, R any] struct {
+	Description WorkerDescription[C]
+	Result      R
+}
+
 /** Generates configurations for workers. **/
 func (s Sweep[C, R]) generate(configs chan C, manager Manager) {
 	s.Generator(configs, manager)
@@ -26,7 +31,7 @@ func (s Sweep[C, R]) generate(configs chan C, manager Manager) {
 }
 
 /** Dispatches configurations to ready workers. **/
-func (s Sweep[C, R]) dispatch(configs chan C, results chan R, manager Manager) {
+func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], manager Manager) {
 	sem := semaphore.NewWeighted(int64(s.MaxWorkers))
 
 	// When all workers are complete, close the results channel.
@@ -54,15 +59,24 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan R, manager Manager) {
 		}
 
 		go func(config C) {
-			s.Worker(config, results, manager.Child())
+			worker_results := make(chan R, 100)
+			s.Worker(config, worker_results, manager.Child())
+			close(worker_results)
+
+			for worker_result := range worker_results {
+				results <- WorkerResult[C, R]{
+					Description: description,
+					Result:      worker_result,
+				}
+			}
 			sem.Release(1)
 		}(config)
 	}
 }
 
 /** Collects and buffers results from workers **/
-func (s Sweep[C, R]) collect(results chan R) []R {
-	var results_buffer []R
+func (s Sweep[C, R]) collect(results chan WorkerResult[C, R]) []WorkerResult[C, R] {
+	var results_buffer []WorkerResult[C, R]
 	for r := range results {
 		results_buffer = append(results_buffer, r)
 	}
@@ -70,9 +84,9 @@ func (s Sweep[C, R]) collect(results chan R) []R {
 }
 
 /** Complete all generated work units in parallel. **/
-func (s Sweep[C, R]) Run() []R {
+func (s Sweep[C, R]) Run() []WorkerResult[C, R] {
 	configs := make(chan C, s.MaxWorkers)
-	results := make(chan R, 1000)
+	results := make(chan WorkerResult[C, R], 1000)
 	manager := CreateManager()
 
 	go s.generate(configs, manager)
