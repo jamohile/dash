@@ -1,3 +1,4 @@
+![Logo](https://user-images.githubusercontent.com/17712692/213901290-2d6da4e4-4497-4af6-8eaf-aaaae7440a3e.png)
 # Dash (WIP)
 
 A simple experiment manager for collecting data across parallel workloads.
