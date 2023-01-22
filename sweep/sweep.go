@@ -48,6 +48,8 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan WorkerResult[C, R], e
 			description.Name = s.GetWorkerName(config)
 		}
 
+		workerId++
+
 		go func(config C) {
 			worker_results := make(chan R, 100)
 			worker_events := make(chan Event)
