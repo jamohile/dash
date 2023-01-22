@@ -7,9 +7,16 @@ import (
 )
 
 type Sweep[C any, R any] struct {
-	Generator  func(config chan C, manager Manager)
-	Worker     func(config C, results chan R, manager Manager)
-	MaxWorkers int
+	Generator     func(config chan C, manager Manager)
+	Worker        func(config C, results chan R, manager Manager)
+	GetWorkerName func(config C) string
+	MaxWorkers    int
+}
+
+type WorkerDescription[C any] struct {
+	ID     int
+	Config C
+	Name   string
 }
 
 /** Generates configurations for workers. **/
@@ -29,12 +36,22 @@ func (s Sweep[C, R]) dispatch(configs chan C, results chan R, manager Manager) {
 	}()
 
 	// As long as there are configurations for workers, keep spinning up workers.
+	// Uniquely identify each worker with an index.
+	workerId := 0
 	for config := range configs {
 		if manager.IsDone() {
 			return
 		}
 
 		sem.Acquire(context.Background(), 1)
+
+		description := WorkerDescription[C]{
+			ID:     workerId,
+			Config: config,
+		}
+		if s.GetWorkerName != nil {
+			description.Name = s.GetWorkerName(config)
+		}
 
 		go func(config C) {
 			s.Worker(config, results, manager.Child())
