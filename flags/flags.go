@@ -30,7 +30,12 @@ func (f *Flags) ToArgs() []string {
 	formatted := make([]string, 0)
 
 	for k, v := range f.Values {
-		formatted = append(formatted, fmt.Sprintf("--%s=%s", k, v))
+		// Special case for empty flags, which are just presence based.
+		if v != "" {
+			formatted = append(formatted, fmt.Sprintf("--%s=%s", k, v))
+		} else {
+			formatted = append(formatted, fmt.Sprintf("--%s", k))
+		}
 	}
 
 	return formatted
