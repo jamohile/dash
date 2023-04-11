@@ -40,3 +40,9 @@ func (f *Flags) ToArgs() []string {
 
 	return formatted
 }
+
+func FromValues(values map[string]string) Flags {
+	return Flags{
+		Values: values,
+	}
+}
